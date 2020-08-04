@@ -17,15 +17,16 @@ class UserProfileManager(BaseUserManager):
         return user
 
 
-  def create_superuser(self,emial,name,password):
-      user=self.crete_user(email,name,password)
-      user.is_superuser = True
-      user.is_staff = True
-      user.save(using=self._db)
+    def create_superuser(self, email, name, password):
+         user=self.crete_user(email,name,password)
+         user.is_superuser = True
+         user.is_staff = True
+         user.save(using=self._db)
+         return user
 
 class UserProfile(AbstractBaseUser,PermissionsMixin):
     """Represents use profile inside our sys"""
-    email = models.email(max_length=255,unique=True)
+    email = models.EmailField(max_length=255,unique=True)
     name=models.CharField(max_length=255)
     is_active=models.BooleanField(default=True)
     is_staff=models.BooleanField(default=False)
@@ -35,14 +36,9 @@ class UserProfile(AbstractBaseUser,PermissionsMixin):
     def get_full_name(self):
         return self.name
         """used to get a users full name"""
+    def get_short_name(self):
+        return self.name
 
-   def get_full_name(self):
-       return self.name
-
-
-   def get_short_name(self):
-       return self.name
-
-  def __str__(self):
-      """convert obj to str"""
-      return self.email
+    def __str__(self):
+        """convert obj to str"""
+        return self.email
