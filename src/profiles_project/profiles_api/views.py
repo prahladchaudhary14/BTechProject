@@ -94,7 +94,7 @@ def time_elapsed_remaining(temps):
     time_remaining_in_seconds = digit_convert(15 * 60 - (int(time_elapsed_mm) * 60 + int(time_elapsed_ss)))
     time_remaining_mm, time_remaining_ss = digit_convert(int(time_remaining_in_seconds) // 60), digit_convert(int(time_remaining_in_seconds) % 60)
 
-    time_elapsed, time_remaining = f'{time_elapsed_mm}:{time_elapsed_ss}', f'{time_remaining_mm}:{time_remaining_ss}'
+    time_elapsed, time_remaining = time_elapsed_mm + ':' + time_elapsed_ss, time_remaining_mm + ':' + time remaining_ss
 
 
 t = str(datetime.datetime.now().time())
