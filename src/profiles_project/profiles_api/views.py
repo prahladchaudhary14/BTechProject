@@ -93,10 +93,6 @@ def digit_convert(number: int) -> str:
 def print_values():
     global dc, sg, ag, frequency, fuel_price, current_block_number, next_block_start, current_block_start, next_block_start, next_block_end, next_block, current_block
     global time_elapsed_mm, time_elapsed_ss, time_remaining_mm, time_remaining_ss
-    print(f'DC: {dc}, SG: {sg}, AG: {ag}, Frequency: {frequency}, Fuel Price: {fuel_price},', end=" ")
-    print(f'Current Block Number: {current_block_number}, Current Block Time: {current_block}, Next Block Time: {next_block}')
-    print(f'Time Elapsed: {time_elapsed}, Time Remaining: {time_remaining} \n')
-
 
 # Get next block from the current block
 def get_next_from_current(current):
