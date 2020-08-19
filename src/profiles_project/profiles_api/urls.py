@@ -8,6 +8,7 @@ router=DefaultRouter()
 router.register('profile',views.UserProfileViewSet)
 urlpatterns=[
 url(r'^SampleApi/',views.SampleApi.as_view()),
+url(r'^TimeData/',views.TimeData.as_view()),
 url(r'^PowerPlantData/',views.PowerPlantData.as_view()),
 url(r'^GetDesisionAspectCumBlock_New/',views.GetDesisionAspectCumBlock_New.as_view()),
 url(r'^GetInstanceDataRABT/',views.GetInstanceDataRABT.as_view()),
