@@ -103,6 +103,17 @@ class PowerPlantData(APIView):
            "Frequency":frequency,
            "FuelPrice":fuel_price
            })
+class TimeData(APIView):
+    """Test API View"""
+    def get(self, request, format=None):
+        """Returns a list of api view features"""
+        return Response({
+          "CurrentBlockNumber":current_block_number,
+          "CurrentBlockTime":current_block,
+          "NextBlockTime":next_block,
+          "TimeElapsed":time_elapsed,
+          "TimeRemaining":time_remaining
+           })
 class SampleApi(APIView):
     """Test API View"""
     def get(self, request, format=None):
