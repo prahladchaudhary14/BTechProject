@@ -12,9 +12,6 @@ from rest_framework.authentication import TokenAuthentication
 import random
 import time
 import datetime
-import decimal
-
-decimal.getcontext().prec = 10
 
 """Note: Use 24 Hour Clock for the code to work"""
 
@@ -31,17 +28,7 @@ Next Block Time -> next_block
 Time Elapsed -> time_elapsed
 Time Remaining -> Time Remaining
 """
-"""Initialization"""
 
-# Update in intervals of 15 minutes (1 time block)
-dc = round(150 + random.random() * 50, 2)
-sg = round(150 + random.random() * 50, 2)
-ag = round(150 + random.random() * 50, 2)
-
-frequency = round(49.5 + random.random() * 1.5, 2)
-
-# Update each day (24-hours)
-fuel_price = round(2 + random.random() * 8, 2)
 
 
 # Returns starting minute of the block
@@ -88,12 +75,6 @@ def digit_convert(number: int) -> str:
         return '0' + str(number)
     else:
         return str(number)
-
-
-def print_values():
-    global dc, sg, ag, frequency, fuel_price, current_block_number, next_block_start, current_block_start, next_block_start, next_block_end, next_block, current_block
-    global time_elapsed_mm, time_elapsed_ss, time_remaining_mm, time_remaining_ss
-
 # Get next block from the current block
 def get_next_from_current(current):
     nb_start_hh, nb_start_mm = current[-5:-3], current[-2:]
@@ -151,6 +132,18 @@ Fuel Price is updated only when the day changes i.e. at Time Block 1
 Detects the start of the next block then starts updating values every 15 minutes
 else waits for 1 minute and checks again
 """
+
+"""Initialization"""
+random.seed(int(current_block_start[:2]) + int(current_block_start[3:5]))
+# Update in intervals of 15 minutes (1 time block)
+dc = round(150 + random.random() * 50, 2)
+sg = round(150 + random.random() * 50, 2)
+ag = round(150 + random.random() * 50, 2)
+
+frequency = round(49.5 + random.random() * 1.5, 2)
+
+# Update each day (24-hours)
+fuel_price = round(2 + random.random() * 8, 2)
 null=0;
 class PowerPlantData(APIView):
     """Test API View"""
