@@ -96,6 +96,7 @@ class PowerPlantData(APIView):
         frequency = round(49.5 + random.random() * 1.5, 2)
 
         # Updated every 24 hours
+        random.seed(int(str(datetime.date.today())[-2:]))
         fuel_price = round(2 + random.random() * 8, 2);
         return Response({
            "Dc":dc,
@@ -171,6 +172,7 @@ class TimeData(APIView):
         frequency = round(49.5 + random.random() * 1.5, 2)
 
         # Updated every 24 hours
+        random.seed(int(str(datetime.date.today())[-2:]))
         fuel_price = round(2 + random.random() * 8, 2);
         return Response({
           "CurrentBlockNumber":current_block_number,
