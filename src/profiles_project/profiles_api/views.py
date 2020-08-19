@@ -175,6 +175,7 @@ class TimeData(APIView):
         random.seed(int(str(datetime.date.today())[-2:]))
         fuel_price = round(2 + random.random() * 8, 2);
         return Response({
+          "Date":str(datetime.datetime.now().time()),
           "CurrentBlockNumber":current_block_number,
           "CurrentBlockTime":current_block,
           "NextBlockTime":next_block,
