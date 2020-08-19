@@ -101,7 +101,8 @@ class PowerPlantData(APIView):
            "Sg":sg,
            "Ag":ag,
            "Frequency":frequency,
-           "FuelPrice":fuel_price})
+           "FuelPrice":fuel_price
+           })
 class SampleApi(APIView):
     """Test API View"""
     def get(self, request, format=None):
