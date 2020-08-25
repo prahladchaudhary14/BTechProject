@@ -61,6 +61,7 @@ class PowerPlantData(APIView):
         Fuel Price -> fuel_price
         """
 
+        # Returns starting minute of the block
         def function(time_m: str, blk: str = 'n') -> str:
             if blk == 'p':
                 block_region = int(time_m) // 15 + 1
@@ -69,6 +70,8 @@ class PowerPlantData(APIView):
             else:
                 op = str(((int(time_m) // 15 + 1) * 15) % 60)
                 return op * 2 if 1 == len(op) else op
+
+
         # Takes digit in int form and converts it to two digits (if only one) by adding preceding zero, returns str
         def digit_convert(number: int) -> str:
             if len(str(number)) == 1:
@@ -107,18 +110,20 @@ class PowerPlantData(APIView):
 
             if deviation <= 0 and frequency >= 49.85:
                 return round(rupees * deviation * frequency, 2)
+            else:
+                return 0
 
 
         def ui_dev_charge_above_and_150_calculate():
             global frequency, sg, ag, deviation, rupees
 
             if frequency >= 49.85 and 0.12 * sg <= 150:
-                if 0.85 * sg <= aa < 0.88 * sg:
+                if 0.85 * sg <= ag < 0.88 * sg:
                     return round(-1 * 50 * (-deviation - 0.12 * sg), 2)
                 elif 0.8 * sg <= ag < 0.85 * sg:
                     return round((-1 * (100 * (-deviation - 0.15 * sg) + 1.5 * sg)) * rupees, 2)
                 else:
-                    return round((-1 * (250 * (-deviation - 0.2 * s) + 6.5 * s)) * rupees, 2)
+                    return round((-1 * (250 * (-deviation - 0.2 * sg) + 6.5 * sg)) * rupees, 2)
             else:
                 return 0
 
@@ -176,6 +181,8 @@ class PowerPlantData(APIView):
                 return round(deviation * 250 * min(50.03, 0) / 100, 2)
             elif ag > sg and sg <= 400 and frequency >= 50.1 and deviation > 48:
                 return round((deviation - 48) * 250 * min(50.03, 0) / 100, 2)
+            else:
+                return 0
 
 
         """Read time from the system clock, using that, Assign current block number, current block and next block """
