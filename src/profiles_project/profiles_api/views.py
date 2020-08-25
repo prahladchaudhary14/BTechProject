@@ -61,7 +61,14 @@ class PowerPlantData(APIView):
         Fuel Price -> fuel_price
         """
 
-
+        def function(time_m: str, blk: str = 'n') -> str:
+            if blk == 'p':
+                block_region = int(time_m) // 15 + 1
+                op = (block_region - 1) * 15
+                return str(op) * 2 if 1 == len(str(op)) else str(op)
+            else:
+                op = str(((int(time_m) // 15 + 1) * 15) % 60)
+                return op * 2 if 1 == len(op) else op
         # Takes digit in int form and converts it to two digits (if only one) by adding preceding zero, returns str
         def digit_convert(number: int) -> str:
             if len(str(number)) == 1:
