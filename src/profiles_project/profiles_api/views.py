@@ -34,6 +34,34 @@ class PowerPlantData(APIView):
     def get(self, request, format=None):
         """Returns a list of api view features"""
 
+        """
+        Notes:
+        **Use 24 Hour Clock for the code to work**
+        Don't use f-strings (not compatible with python version < 3.6)
+        """
+
+        """
+        PRINTED VALUES CORRESPONDING TO THE VARIABLES
+        (Updated every second):
+        Time Elapsed -> time_elapsed
+        Time Remaining -> Time Remaining
+        (Updated every 15 minutes):
+        DC -> dc
+        SG -> sg
+        AG -> ag
+        Frequency -> frequency
+        Current Block Number -> current_block_number
+        Current Block Time -> current_block
+        Next Block Time -> next_block
+        Values under #Charges -> same as the jupyter file
+        Next Block's sg -> sg_plus_one
+        Next to Next block's sg -> sg_plus_two
+        and so on... -> sg_plus_three, sg_plus_four
+        (Updated every day)
+        Fuel Price -> fuel_price
+        """
+
+
         # Returns starting minute of the block
         def function(time_m: str, blk: str = 'n') -> str:
             if blk == 'p':
@@ -61,6 +89,101 @@ class PowerPlantData(APIView):
                 return n
 
 
+        # Defines the seed input for random functions (for 15 minute values)
+        def function_seed(blk_no, day, mon):
+            return (96 * 96) * blk_no + 96 * day + mon
+
+
+        # Defines the seed input for random functions (for 1 day values)
+        def function_seed_day(day, mon):
+            return 32 * day + mon
+
+
+        # Take frequency as input and output the deviation rate
+        def deviation_rate(f):
+            if 49.48 <= f <= 50.00:
+                return 3.0304
+            elif f == 50.01:
+                return 2.5063
+            elif f == 50.02:
+                return 1.8798
+            elif f == 50.03:
+                return 1.2532
+            elif f == 50.04:
+                return 0.6266
+            else:
+                return 0
+
+
+        def ui_dev_charge_calculate(dev, f, rs):
+            if dev <= 0 and f >= 49.85:
+                return round(rs * dev * f, 2)
+            else:
+                return 0
+
+
+        def ui_charge_above_and_150_calculate(dev, f, s, a, rs):
+            if f >= 49.85 and 0.12 * s <= 150:
+                if 0.85 * s <= a < 0.88 * s:
+                    return round(-1 * 50 * (-dev - 0.12 * s), 2)
+                elif 0.8 * s <= a < 0.85 * s:
+                    return round((-1 * (100 * (-dev - 0.15 * s) + 1.5 * s)) * rs, 2)
+                else:
+                    return round((-1 * (250 * (-dev - 0.2 * s) + 6.5 * s)) * rs, 2)
+            else:
+                return 0
+
+
+        def ui_dev_charge_above_and_012_calculate(dev, f, s, rs):
+            if f >= 49.85 and 0.12 * s > 150:
+                if 150 < dev <= 200:
+                    return round((- 1 * (50 * (- dev - 150)) * rs), 2)
+                elif 200 < -dev <= 250:
+                    return round((- 1 * (100 * (-dev - 200) + 2500) * rs), 2)
+                elif -dev > 250:
+                    return round((- 1 * (250 * (- dev - 250) + 7500)) * rs, 2)
+                else:
+                    return 0
+            else:
+                return 0
+
+
+        def ui_dev_charge_below_dc_calculate(dev, f, s, a, rs):
+            if a <= s and f < 49.85:
+                return round(dev * rs * 250, 2)
+            else:
+                return 0
+
+
+        def ui_dev_charge_below_dc_add_calculate(dev, f, s, a, rs):
+            if a <= s and f < 49.85:
+                return round(dev * rs * 250, 2)
+            else:
+                return 0
+
+
+        def oi_dev_charge_calculate(dev, s, a, rs):
+            if a > s and dev > 0.12 * s and 0.12 * s < 150:
+                return round(0.12 * s * rs * 250, 2)
+            elif a > s and dev < s * 0.12 and dev < 150:
+                return round(dev * rs * 250, 2)
+            elif a > s and 0.12 * s > 150:
+                return round(150 * rs * 250, 2)
+            elif a > s and 0.12 * s < 150:
+                return round(0.12 * s * rs * 250, 2)
+            else:
+                return 0
+
+
+        def oi_dev_charge_add_calculate(dev, f, s, a):
+            if a > s > 400 and f >= 50.1:
+                return round(dev * 250 * min(50.03, 0) / 100, 2)
+            elif a > s and s <= 400 and f >= 50.1 and dev > 48:
+                return round((dev - 48) * 250 * min(50.03, 0) / 100, 2)
+            else:
+                return 0
+
+
         """Read time from the system clock, using that, Assign current block number, current block and next block """
         t = str(datetime.datetime.now().time())
         t_hh, t_mm, t_ss = t[:2], t[3:5], t[6:8]
@@ -84,10 +207,13 @@ class PowerPlantData(APIView):
         time_elapsed = time_elapsed_mm + ":" + time_elapsed_ss
         time_remaining = time_remaining_mm + ":" + time_remaining_ss
 
+        # Date calculation (used in seeding of random functions)
+        date = str(datetime.date.today())
+        date_day = int(date[-2:])
+        date_mon = int(date[-5:-3])
 
         """Randomizing the values as per the specified ranges"""
-
-        random.seed(current_block_number)
+        random.seed(function_seed(block_number(current_block_number), date_day, date_mon))
         # Update in intervals of 15 minutes (1 time block)
         dc = round(150 + random.random() * 50, 2)
         sg = round(150 + random.random() * 50, 2)
@@ -95,68 +221,17 @@ class PowerPlantData(APIView):
         frequency = round(49.5 + random.random() * 1.5, 2)
         deviation = ag - sg
 
-        rupees = 0
-        if 49.48 <= frequency <= 50.00:
-            rupees = 3.0304
-        elif frequency == 50.01:
-            rupees = 2.5063
-        elif frequency == 50.02:
-            rupees = 1.8798
-        elif frequency == 50.03:
-            rupees = 1.2532
-        elif frequency == 50.04:
-            rupees = 0.6266
+        rupees = deviation_rate(frequency)
+
 
         # Charges
-        ui_dev_charge = 0
-        if deviation <= 0 and frequency >= 49.85:
-            ui_dev_charge = round(rupees * deviation * frequency, 2)
-
-
-        ui_dev_charge_above_and_150 = 0
-        if frequency >= 49.85 and 0.12 * sg <= 150:
-            if 0.85 * sg <= ag < 0.88 * sg:
-                ui_dev_charge_above_and_150 = round(-1 * 50 * (-deviation - 0.12 * sg), 2)
-            elif 0.8 * sg <= ag < 0.85 * sg:
-                ui_dev_charge_above_and_150 = round((-1 * (100 * (-deviation - 0.15 * sg) + 1.5 * sg)) * rupees, 2)
-            else:
-                ui_dev_charge_above_and_150 = round((-1 * (250 * (-deviation - 0.2 * sg) + 6.5 * sg)) * rupees, 2)
-
-
-        ui_dev_charge_above_and_012 = 0
-        if frequency >= 49.85 and 0.12 * sg > 150:
-            if 150 < deviation <= 200:
-                ui_dev_charge_above_and_012 = round((- 1 * (50 * (- deviation - 150)) * rupees), 2)
-            elif 200 < -deviation <= 250:
-                ui_dev_charge_above_and_012 = round((- 1 * (100 * (-deviation - 200) + 2500) * rupees), 2)
-            elif -deviation > 250:
-                ui_dev_charge_above_and_012 = round((- 1 * (250 * (- deviation - 250) + 7500)) * rupees, 2)
-
-
-        ui_dev_charge_below_dc = 0
-        if ag <= sg and frequency < 49.85:
-            ui_dev_charge_below_dc = round(deviation * rupees * 250, 2)
-
-        ui_dev_charge_below_dc_add = 0
-        if ag <= sg and frequency < 49.85:
-            ui_dev_charge_below_dc_add = round(deviation * rupees * 250, 2)
-
-        oi_dev_charge = 0
-        if ag > sg and deviation > 0.12 * sg and 0.12 * sg < 150:
-            oi_dev_charge = round(0.12 * sg * rupees * 250, 2)
-        elif ag > sg and deviation < sg * 0.12 and deviation < 150:
-            oi_dev_charge = round(deviation * rupees * 250, 2)
-        elif ag > sg and 0.12 * sg > 150:
-            oi_dev_charge = round(150 * rupees * 250, 2)
-        elif ag > sg and 0.12 * sg < 150:
-            oi_dev_charge = round(0.12 * sg * rupees * 250, 2)
-
-        oi_dev_charge_add = 0
-        if ag > sg > 400 and frequency >= 50.1:
-            oi_dev_charge_add = round(deviation * 250 * min(50.03, 0) / 100, 2)
-        elif ag > sg and sg <= 400 and frequency >= 50.1 and deviation > 48:
-            oi_dev_charge_add = round((deviation - 48) * 250 * min(50.03, 0) / 100, 2)
-
+        ui_dev_charge = ui_dev_charge_calculate(deviation, frequency, rupees)
+        ui_dev_charge_above_and_150 = ui_charge_above_and_150_calculate(deviation, frequency, sg, ag, rupees)
+        ui_dev_charge_above_and_012 = ui_dev_charge_above_and_012_calculate(deviation, frequency, sg, rupees)
+        ui_dev_charge_below_dc = ui_dev_charge_below_dc_calculate(deviation, frequency, sg, ag, rupees)
+        ui_dev_charge_below_dc_add = ui_dev_charge_below_dc_add_calculate(deviation, frequency, sg, ag, rupees)
+        oi_dev_charge = oi_dev_charge_calculate(deviation, sg, ag, rupees)
+        oi_dev_charge_add = oi_dev_charge_add_calculate(deviation, frequency, sg, ag)
 
         sum_ui = ui_dev_charge + ui_dev_charge_above_and_150 + ui_dev_charge_above_and_012 + ui_dev_charge_below_dc + ui_dev_charge_below_dc_add
         total_charge = sum_ui + oi_dev_charge + oi_dev_charge_add
@@ -166,21 +241,67 @@ class PowerPlantData(APIView):
         net_gain = fuel + total_charge
 
 
+        "Previous Block Number and Time"
+        previous_block_number = 96 if current_block_number == 1 else current_block_number - 1
+
+        previous_block_end = current_block_start
+
+        # ----
+        previous_block_start_mm = digit_convert((int(previous_block_end[-2:]) - 15) % 60)
+        previous_block_start_hh = digit_convert(int(t_hh) - 1) if current_block_place == 1 else t_hh
+        # ----
+
+        previous_block_start = previous_block_start_hh + ":" + previous_block_start_mm
+
+        previous_block = previous_block_start + "-" + previous_block_end
+
+        """Previous Block Data"""
+        # Same parameters calculated; Added a 'previous_' prefix to differentiate
+
+        random.seed(function_seed(current_block_number - 1, date_day, date_mon))
+        previous_dc = round(150 + random.random() * 50, 2)
+        previous_sg = round(150 + random.random() * 50, 2)
+        previous_ag = round(150 + random.random() * 50, 2)
+        previous_frequency = round(49.5 + random.random() * 1.5, 2)
+        previous_deviation = previous_ag - previous_sg
+        previous_rupees = deviation_rate(previous_frequency)
+
+        previous_ui_dev_charge = ui_dev_charge_calculate(previous_deviation, previous_frequency, previous_rupees)
+        previous_oi_dev_charge = oi_dev_charge_calculate(previous_deviation, previous_sg, previous_ag, previous_rupees)
+
+        previous_ui_dev_charge_above_and_150 = ui_charge_above_and_150_calculate(previous_deviation, previous_frequency, previous_sg, previous_ag, previous_rupees)
+        previous_ui_dev_charge_above_and_012 = ui_dev_charge_above_and_012_calculate(previous_deviation, previous_frequency, previous_sg, previous_rupees)
+
+        previous_ui_dev_charge_below_dc = ui_dev_charge_below_dc_calculate(previous_deviation, previous_frequency, previous_sg, previous_ag, previous_rupees)
+
+        previous_ui_dev_charge_below_dc_add = ui_dev_charge_below_dc_add_calculate(previous_deviation, previous_frequency, previous_sg, previous_ag, previous_rupees)
+        previous_oi_dev_charge_add = oi_dev_charge_add_calculate(previous_deviation, previous_frequency, previous_sg, previous_ag)
+
+
+        previous_sum_ui = previous_ui_dev_charge + previous_ui_dev_charge_above_and_150 + previous_ui_dev_charge_above_and_012 + previous_ui_dev_charge_below_dc + previous_ui_dev_charge_below_dc_add
+
+        previous_total_charge = previous_sum_ui + previous_oi_dev_charge + previous_oi_dev_charge_add
+        previous_total_charge_add = previous_ui_dev_charge_above_and_150 + previous_ui_dev_charge_above_and_012 + previous_ui_dev_charge_below_dc_add + previous_oi_dev_charge_add
+
+        previous_fuel = previous_deviation * 250 * 151.4 / 100 * (-1)
+        previous_net_gain = previous_fuel + previous_total_charge
+
+
         # SG for the next four blocks
-        random.seed(block_number(current_block_number + 1))
+        random.seed(function_seed(block_number(current_block_number + 1), date_day, date_mon))
         sg_plus_one = round(150 + random.random() * 50, 2)
 
-        random.seed(block_number(current_block_number + 2))
+        random.seed(function_seed(block_number(current_block_number + 2), date_day, date_mon))
         sg_plus_two = round(150 + random.random() * 50, 2)
 
-        random.seed(block_number(current_block_number + 3))
+        random.seed(function_seed(block_number(current_block_number + 3), date_day, date_mon))
         sg_plus_three = round(150 + random.random() * 50, 2)
 
-        random.seed(block_number(current_block_number + 4))
+        random.seed(function_seed(block_number(current_block_number + 4), date_day, date_mon))
         sg_plus_four = round(150 + random.random() * 50, 2)
 
         # Updated every 24 hours
-        random.seed(int((str(datetime.date.today())[-2:])))
+        random.seed(function_seed_day(date_day, date_mon))
         fuel_price = round(2 + random.random() * 8, 2)
         return Response({
            "Dc":dc,
@@ -197,8 +318,19 @@ class PowerPlantData(APIView):
            "SgPlusOne":sg_plus_one,
            "SgPlusTwo":sg_plus_two,
            "SgPlusThree":sg_plus_three,
-           "SgPlusFour":sg_plus_four
-           })
+           "SgPlusFour":sg_plus_four,
+           "PreviousBlockNumber":previous_block_number,
+           "PreviousBlock":previous_block,
+           "PreviousDc":previous_dc,
+           "PreviousSg":previous_sg,
+           "PreviousFrequency":previous_frequency,
+           "PreviousDeviation":previous_deviation,
+           "PreviousDeviationRate":previous_rupees,
+           "PreviousDeviationRupees":previous_total_charge,
+           "PreviousAdditionalDeviationCharge":previous_total_charge_add,
+           "PreviousFuelCost":previous_fuel,
+           "PreviousNetGain":previous_net_gain,
+            })
 class TimeData(APIView):
     """Test API View"""
     def get(self, request, format=None):
