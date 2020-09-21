@@ -32,12 +32,18 @@ null=0;
 class PowerPlantData(APIView):
     """Test API View"""
     def get(self, request, format=None):
-        """Returns a list of api view features"""
-
         """
         Notes:
         **Use 24 Hour Clock for the code to work**
         Don't use f-strings (not compatible with python version < 3.6)
+        Random functions:
+        Upon seeding the random function, it generates the same pattern of outputs; (Doesn't generate the same output multiple
+        times). Important: Don't change the order of random.random() calls.
+        Example: if a seed of 1 is provided upon multiple calls the following can happen:
+        1st call -> 0.45
+        2nd call -> 0.53
+        3rd call -> 0.58
+        To generate the same output multiple times, the function needs to be seeded again.
         """
 
         """
@@ -46,7 +52,7 @@ class PowerPlantData(APIView):
         Time Elapsed -> time_elapsed
         Time Remaining -> Time Remaining
         (Updated every 15 minutes):
-        DC -> dc
+        DC -> dc`
         SG -> sg
         AG -> ag
         Frequency -> frequency
@@ -61,9 +67,59 @@ class PowerPlantData(APIView):
         Fuel Price -> fuel_price
         """
 
+        """
+        WORKING OF THE PROGRAM:
+        The objective is to update variables in realtime for each time window.
+        This is trivial if this code is run constantly as we can just use a while loop to do so.
+        However, due to the limits of the server, the entire code is run every time the data is accessed, which makes it complex
+        To overcome this, the following approach has been used:
+        Idea: The random function present in every programming language is actually a pseudorandom number generator. What this
+        means is that if we give it a certain input, it can only return a certain output. As an example, it can be thought of
+        as the function f(x) = x+1: if we give 1 as an input it can only give 2 as an output.
+        Along similar lines, if we give an input to the random function which stays same for a given time block and changes for
+        another time block, we will be able to generate the required variables. This idea is utilized in the following approach.
+        Approach: Every time someone accesses the data on the server, the following process takes place:
+        The only input taken by the server is the current date and time which is taken from an internal clock present on every
+        server (and on every device). On the basis of the current time, we find out the current block number and the current
+        block time. Let's call them the parent variables.
+        On the basis of the parent variables a function calculates the previous or next block time as needed. These functions
+        can calculate the previous or next block time given a block time as an input. In this way, we can calculate the block
+        time for 2 blocks ahead by simply using the next block function two times. By using this function multiple times we
+        can calculate the block time for a block arbitrary number of time blocks ahead or behind.
+        The seed value or the input value for the random function is calculated using functions which have the inputs block no.,
+        day and month. The day and month are directly accessed using the server clock and the block no. has been calculated
+        using the method discussed above.
+        The function which returns the seed value for the variables that are updated in every time block takes input as block
+        no., day and month. Now, all three of these values cannot be the same for a block. We require a function which can
+        map these three values to a single value which is unique. One might notice that it is impossible that the same value
+        for a certain parameter does not repeat over a month or a year. This is allowed to happen in our approach using the
+        random function itself. Although rare, the function allows multiple seed values to give a certain output remarkably
+        reflecting the real world conditions.
+        The seed function is inspired from the Rabin-Karp string matching algorithm.
+        Since the maximum values of the three variables block no., day and month are 96, 31 and 12, the highest of these is
+        chosen. Now, we're using this value as a 'base' and exponentiating, which is exactly how we calculate values in
+        the common number system. The function is as follows:
+        def function_seed(blk_no, day, mon):
+            return (96 * 96) * blk_no + 96 * day + mon
 
-        # Returns starting minute of the block
+        We can imagine that we are using a number system of base 96, and if we just input any number in the first, second
+        and third place we'll obtain a unique number.
+        To illustrate this even further, consider the normal base 10 representation: to obtain any three digit number, we can
+        arbitrarily choose three numbers from 0 to 9. Suppose 123 is chosen.
+        123 = (10 * 10) * 1 + 10 * 2 + 3
+        This is exactly similar to the function above with the only exception being the change of base.
+        Similarly, the function which updates the parameters which need to be changed every 24 hours takes in only day and
+        month as an input. The maximum of these is 31 (for days) and consequently a base of 31 is chosen. The rest of the
+        procedure is the same as above.
+        """
+
+
         def function(time_m: str, blk: str = 'n') -> str:
+            """
+            Takes any arbitrary minute of of time as an input and returns the starting minute of the block
+            Example: 06 -> 00, 17 -> 15, 36 -> 30, 48 -> 45
+            """
+
             if blk == 'p':
                 block_region = int(time_m) // 15 + 1
                 op = (block_region - 1) * 15
@@ -73,16 +129,22 @@ class PowerPlantData(APIView):
                 return op * 2 if 1 == len(op) else op
 
 
-        # Takes digit in int form and converts it to two digits (if only one) by adding preceding zero, returns str
         def digit_convert(number: int) -> str:
+            """
+            Takes digit in int form and converts it to two digits (if only one) by adding preceding zero, returns str
+            Example: 4 -> '04'
+            """
             if len(str(number)) == 1:
                 return '0' + str(number)
             else:
                 return str(number)
 
 
-        # Takes a block number and returns a number between 1 and 96 i.e. converts block 97 to block 1, etc.
         def block_number(n):
+            """
+            Takes a block number and converts it into a block between 1 and 96
+            Example: converts block 97 to block 1
+            """
             if n > 96:
                 return n % 96
             else:
@@ -184,6 +246,151 @@ class PowerPlantData(APIView):
                 return 0
 
 
+        def past_deviations_calculate(cur_blk_no):
+            """Calculates the deviations for the day till the current block and returns them in an array"""
+            op_dev, op_sg, op_ag = [], [], []
+            op_block_no = []
+            cur_date = str(datetime.date.today())
+            cur_day = int(cur_date[-2:])
+            cur_mon = int(cur_date[-5:-3])
+            i = 1
+
+            while i <= cur_blk_no:
+
+                # # Day change
+                # if cur_blk_no == 0:
+                #     cur_blk_no = 96
+                #     i += 1
+
+                # print("Function Block...")
+                # print("Current Block Number: ", i)
+                # print("Seed Value:", function_seed(block_number(i), cur_day, cur_mon))
+
+                random.seed(function_seed(i, cur_day, cur_mon))
+                s = round(150 + random.random() * 50, 2)
+                a = round(150 + random.random() * 50, 2)
+                op_dev.append(round(a - s, 2))
+                op_sg.append(s)
+                op_ag.append(a)
+                op_block_no.append(i)
+                # print("Current AG:", a, "Current SG:", s, "Current Deviation:", round(a - s, 2), "\n")
+
+                i += 1
+
+            return op_dev, op_sg, op_ag, op_block_no
+
+
+        def continuous_blocks_calculated(dev_array):
+            """Takes an array containing the deviations from the 1st block to the current block, then returns the number of
+            number of positive or negative continuous blocks"""
+
+            sign = dev_array[-1]
+            total = 1
+
+            for i in range(len(dev_array) - 2, -1, -1):
+                if sign > 0:
+                    if dev_array[i] > 0:
+                        total += 1
+                    else:
+                        break
+                elif sign < 0:
+                    if dev_array[i] < 0:
+                        total += 1
+                    else:
+                        break
+                else:
+                    total = 0
+                    break
+
+            # Positive, Negative
+            p, n = 0, 0
+
+            if sign > 0:
+                p = total
+            elif sign < 0:
+                n = total
+
+            return p, n
+
+
+        def alarm_calculation(dev_array):
+            """If there is sustained deviation (more than 20MW with reference to schedule) for 11 blocks, raise alarm"""
+            # print("Function: Alarm")
+            if len(dev_array) < 11:
+                return 0, ""
+            else:
+                sign = dev_array[-1]
+                total = 0
+
+                if sign > 20:
+                    total += 1
+                    i = 10
+                    while i >= 1:
+                        if dev_array[-1-i] > 20:
+                            total += 1
+                            i -= 1
+                        else:
+                            break
+                    if total == 11:
+                        return 1, "Warning: Sustained Positive Violation for 11 Blocks"
+                    else:
+                        return 0, ""
+
+                elif sign < -20:
+                    total += 1
+                    i = 10
+                    while i >= 1:
+                        if dev_array[-1-i] < -20:
+                            total += 1
+                            i -= 1
+                        else:
+                            break
+                    if total == 11:
+                        return 1, "Warning: Sustained Negative Violation for 11 Blocks"
+                    else:
+                        return 0, ""
+
+
+        def sign_violations_calculate(dev_array):
+            """Calculates the sign violations i.e. if deviation continues in one direction for more than 12 blocks,
+            it is required to correct it the latest by the 13th block or additional penalties corresponding to the number of
+            sign violations is incurred"""
+
+            if len(dev_array) < 13:
+                return 0
+            else:
+                sign = dev_array[-1]
+                total = 0
+
+                if sign > 20:
+                    total += 1
+                    i = 1
+                    while i <= len(dev_array) - 1:
+                        if dev_array[-1-i] > 20:
+                            total += 1
+                            i += 1
+                        else:
+                            break
+                    if total > 12:
+                        return total - 12
+                    else:
+                        return 0
+
+                elif sign < -20:
+                    total += 1
+                    i = 1
+                    while i <= len(dev_array) - 1:
+                        if dev_array[-1-i] < -20:
+                            total += 1
+                            i += 1
+                        else:
+                            break
+                    if total > 12:
+                        return total - 12
+                    else:
+                        return 0
+
+
         """Read time from the system clock, using that, Assign current block number, current block and next block """
         t = str(datetime.datetime.now().time())
         t_hh, t_mm, t_ss = t[:2], t[3:5], t[6:8]
@@ -215,11 +422,13 @@ class PowerPlantData(APIView):
         """Randomizing the values as per the specified ranges"""
         random.seed(function_seed(block_number(current_block_number), date_day, date_mon))
         # Update in intervals of 15 minutes (1 time block)
-        dc = round(150 + random.random() * 50, 2)
         sg = round(150 + random.random() * 50, 2)
         ag = round(150 + random.random() * 50, 2)
+        dc = round(150 + random.random() * 50, 2)
         frequency = round(49.5 + random.random() * 1.5, 2)
-        deviation = ag - sg
+        deviation = round(ag - sg, 2)
+        ag_by_sg_percent = round((ag / sg) * 100, 2)
+
 
         rupees = deviation_rate(frequency)
 
@@ -237,8 +446,8 @@ class PowerPlantData(APIView):
         total_charge = sum_ui + oi_dev_charge + oi_dev_charge_add
         total_charge_add = ui_dev_charge_above_and_150 + ui_dev_charge_above_and_012 + ui_dev_charge_below_dc_add + oi_dev_charge_add
 
-        fuel = deviation * 250 * 151.4 / 100 * (-1)
-        net_gain = fuel + total_charge
+        fuel = round(deviation * 250 * 151.4 / 100 * (-1), 2)
+        net_gain = round(fuel + total_charge, 2)
 
 
         "Previous Block Number and Time"
@@ -259,11 +468,14 @@ class PowerPlantData(APIView):
         # Same parameters calculated; Added a 'previous_' prefix to differentiate
 
         random.seed(function_seed(current_block_number - 1, date_day, date_mon))
-        previous_dc = round(150 + random.random() * 50, 2)
         previous_sg = round(150 + random.random() * 50, 2)
         previous_ag = round(150 + random.random() * 50, 2)
+        previous_dc = round(150 + random.random() * 50, 2)
         previous_frequency = round(49.5 + random.random() * 1.5, 2)
-        previous_deviation = previous_ag - previous_sg
+        previous_deviation = round(previous_ag - previous_sg, 2)
+        previous_ag_by_sg_percent = round((previous_ag / previous_sg) * 100, 2)
+
+        # Deviation Rate
         previous_rupees = deviation_rate(previous_frequency)
 
         previous_ui_dev_charge = ui_dev_charge_calculate(previous_deviation, previous_frequency, previous_rupees)
@@ -283,11 +495,24 @@ class PowerPlantData(APIView):
         previous_total_charge = previous_sum_ui + previous_oi_dev_charge + previous_oi_dev_charge_add
         previous_total_charge_add = previous_ui_dev_charge_above_and_150 + previous_ui_dev_charge_above_and_012 + previous_ui_dev_charge_below_dc_add + previous_oi_dev_charge_add
 
-        previous_fuel = previous_deviation * 250 * 151.4 / 100 * (-1)
-        previous_net_gain = previous_fuel + previous_total_charge
+        previous_fuel = round(previous_deviation * 250 * 151.4 / 100 * (-1), 2)
+        previous_net_gain = round(previous_fuel + previous_total_charge, 2)
+
+        """Deviations for Past Blocks (Used to calculate continuous +ve/-ve blocks and sign violations"""
+        # print("Current Block Number: ", current_block_number)
+        # print("Seed Value:", function_seed(block_number(current_block_number), date_day, date_mon))
+        # print("Current AG:", ag, "Current SG:", sg, "Current Deviation:", deviation, "\n")
 
 
-        # SG for the next four blocks
+        past_dev_array, plot_y_sg, plot_y_ag, plot_x_blk_no = past_deviations_calculate(current_block_number)
+        continuous_pos, continuous_neg = continuous_blocks_calculated(past_dev_array)
+        # print(past_dev_array)
+        # print("Cont +ve:", continuous_pos, "Cont -ve:", continuous_neg)
+        alarm, alarm_message = alarm_calculation([past_dev_array])
+        # print(alarm, alarm_message)
+        sign_violations = sign_violations_calculate(past_dev_array)
+
+        "Next Block Data"
         random.seed(function_seed(block_number(current_block_number + 1), date_day, date_mon))
         sg_plus_one = round(150 + random.random() * 50, 2)
 
@@ -300,7 +525,7 @@ class PowerPlantData(APIView):
         random.seed(function_seed(block_number(current_block_number + 4), date_day, date_mon))
         sg_plus_four = round(150 + random.random() * 50, 2)
 
-        # Updated every 24 hours
+        "Updated every 24 hours"
         random.seed(function_seed_day(date_day, date_mon))
         fuel_price = round(2 + random.random() * 8, 2)
         return Response({
@@ -330,6 +555,17 @@ class PowerPlantData(APIView):
            "PreviousAdditionalDeviationCharge":previous_total_charge_add,
            "PreviousFuelCost":previous_fuel,
            "PreviousNetGain":previous_net_gain,
+           "PastDevArray": past_dev_array,
+            "PlotYSg": plot_y_sg,
+            "PlotYAg": plot_y_ag,
+            "PlotXBlockNumber": plot_x_blk_no,
+            "ContinuousPositive": continuous_pos,
+            "ContinuousNegative": continuous_neg,
+            "Alarm": alarm,
+            "AlarmMessage": alarm_message,
+            "SignViolations": sign_violations,
+            "AgBySgPercent": ag_by_sg_percent,
+            "PreviousAgBySgPercent": previous_ag_by_sg_percent,
             })
 class TimeData(APIView):
     """Test API View"""
