@@ -390,6 +390,10 @@ class PowerPlantData(APIView):
                     else:
                         return 0
 
+            return 0
+
+
+
 
         """Read time from the system clock, using that, Assign current block number, current block and next block """
         t = str(datetime.datetime.now().time())
