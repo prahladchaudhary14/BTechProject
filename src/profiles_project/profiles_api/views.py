@@ -585,7 +585,7 @@ class PowerPlantData(APIView):
             "PreviousAgBySgPercent": previous_ag_by_sg_percent,
             "MLXBlockNumber": ml_x_block_number,
             "MLYPredictedValue": ml_y_predicted_value,
-            "MLYActualValue": ml_y_actual
+            "MLYActualValue": ml_y_actual_value
             })
 class TimeData(APIView):
     """Test API View"""
