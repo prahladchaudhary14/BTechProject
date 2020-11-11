@@ -532,6 +532,19 @@ class PowerPlantData(APIView):
         "Updated every 24 hours"
         random.seed(function_seed_day(date_day, date_mon))
         fuel_price = round(2 + random.random() * 8, 2)
+        """Machine Learning"""
+        ml_x_block_number = list(map(float, "1  5  9 13 17 21 25 29 33 37 41 45 49 53 57 61 65 69 73 77 81 85 89 93".split()))
+        ml_y_predicted_value = list(map(float, "177.59978236 177.30424698 177.20475222 177.27930507 177.50591037 177.8625708  "
+                                               "178.32728687 178.87805692 179.49287714 180.14974156 180.82664201 181.50156821 "
+                                               "182.15250768 182.75744579 183.29436574 183.74124857 184.07607316 184.27681623 "
+                                               "184.32145231 184.18795381 183.85429094 183.29843176 182.49834217 "
+                                               "181.4319859".split()))
+
+        ml_y_actual_value = list(map(float, "177.48200039 180.15761821 178.08133878 176.91963417 176.22494649 176.07705779 "
+                                            "177.19595252 178.35765713 180.01945904 181.64818058 182.94999027 183.90737498 "
+                                            "184.63708893 184.98345982 185.53025881 185.68203931 185.76182137 185.7812804  "
+                                            "185.20918467 184.55341506 183.38198093 182.73788675 182.62891613 "
+                                            "181.36018681".split()))
         return Response({
            "Dc":dc,
            "Sg":sg,
@@ -570,6 +583,9 @@ class PowerPlantData(APIView):
             "SignViolations": sign_violations,
             "AgBySgPercent": ag_by_sg_percent,
             "PreviousAgBySgPercent": previous_ag_by_sg_percent,
+            "MLXBlockNumber": ml_x_block_number,
+            "MLYPredictedValue": ml_y_predicted_value,
+            "MLYActualValue": ml_y_actual
             })
 class TimeData(APIView):
     """Test API View"""
